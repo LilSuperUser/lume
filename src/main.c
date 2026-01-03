@@ -26,9 +26,25 @@ int load_config_file(char *username, int *port) {
     int found_port = 0;
 
     while (fgets(line, sizeof(line), file)) {
-        // Remove trailing newline
-        line[strcspn(line, "\n")] = '\0';
+        size_t len = strlen(line);
 
+        /* If the line does not end with a newline and we're not at EOF,
+         * it was longer than the buffer; discard the rest of this physical line
+         * so that the remainder is not treated as a separate config line.
+         */
+        if (len > 0 && line[len - 1] != '\n' && !feof(file)) {
+            int c;
+            while ((c = fgetc(file)) != '\n' && c != EOF) {
+                /* discard */
+            }
+            /* Skip parsing this overlong line */
+            continue;
+        }
+
+        // Remove trailing newline, if present
+        if (len > 0 && line[len - 1] == '\n') {
+            line[len - 1] = '\0';
+        }
         if (strncmp(line, "username=", 9) == 0) {
             strncpy(username, line + 9, USERNAME_LEN);
             username[USERNAME_LEN - 1] = '\0';
