@@ -2,12 +2,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <ctype.h>
 
 #include "../include/network.h"
 #include "../include/ui.h"
 
 /*
- * Load configuration from lume.conf
+ * Load configuration from ~/.config/lume/lume.conf
+ *
  * Expected format:
  *   username=user
  *   port=8080
@@ -16,7 +18,12 @@
  * 0 on failure (including when only one of them is configured).
  */
 int load_config_file(char *username, int *port) {
-    FILE *file = fopen("lume.conf", "r");
+    char path[512];
+    const char *home = getenv("HOME");
+    if (!home) return 0;
+
+    snprintf(path, sizeof(path), "%s/.config/lume/lume.conf", home);
+    FILE *file = fopen(path, "r");
     if (!file) {
         return 0; // config file not found
     }
@@ -45,15 +52,28 @@ int load_config_file(char *username, int *port) {
         if (len > 0 && line[len - 1] == '\n') {
             line[len - 1] = '\0';
         }
+
         if (strncmp(line, "username=", 9) == 0) {
-            strncpy(username, line + 9, USERNAME_LEN);
+            char *val = line + 9;
+            while (isspace((unsigned char)*val)) val++;
+            char *end = val + strlen(val) - 1;
+            while (end > val && isspace((unsigned char)*end)) *end-- = '\0';
+
+            strncpy(username, val, USERNAME_LEN);
             username[USERNAME_LEN - 1] = '\0';
             if (username[0] != '\0') {
                 found_username = 1;
             }
         } else if (strncmp(line, "port=", 5) == 0) {
-            *port = atoi(line + 5);
-            found_port = 1;
+            char *val = line + 5;
+            while (isspace((unsigned char)*val)) val++;
+            char *endptr;
+            long port_val = strtol(val, &endptr, 10);
+            while (isspace((unsigned char)*endptr)) endptr++;
+            if (endptr != val && (*endptr == '\0' || *endptr == '\r') && port_val >= 1 && port_val <= 65535) {
+                *port = (int)port_val;
+                found_port = 1;
+            }
         }
     }
 
@@ -70,7 +90,15 @@ int main(int argc, char *argv[]) {
         // 1️⃣ Use command-line arguments
         strncpy(app_state.local_username, argv[1], USERNAME_LEN);
         app_state.local_username[USERNAME_LEN - 1] = '\0';
-        app_state.local_tcp_port = atoi(argv[2]);
+        
+        char *endptr;
+        long val = strtol(argv[2], &endptr, 10);
+        if (*argv[2] != '\0' && *endptr == '\0' && val >= 1 && val <= 65535) {
+            app_state.local_tcp_port = (int)val;
+        } else {
+            fprintf(stderr, "Invalid port: %s. Port must be between 1 and 65535.\n", argv[2]);
+            return 1;
+        }
 
     } else if (argc == 1 && load_config_file(config_username, &config_port)) {
         // 2️⃣ Fallback to config file when no CLI arguments are provided
