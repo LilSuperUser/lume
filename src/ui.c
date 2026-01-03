@@ -23,6 +23,7 @@ void init_ui() {
     init_pair(2, COLOR_YELLOW, -1);
     init_pair(3, COLOR_GREEN, -1);
     init_pair(4, COLOR_CYAN, -1);
+    init_pair(5, COLOR_WHITE, -1);
 
     int max_y, max_x;
     getmaxyx(stdscr, max_y, max_x);
@@ -99,6 +100,17 @@ void draw_interface() {
 void log_message(const char *fmt, ...) {
     pthread_mutex_lock(&app_state.chat_mutex);
     
+    time_t rawtime;
+    struct tm *timeinfo;
+    char timestamp[12];
+    time(&rawtime);
+    timeinfo = localtime(&rawtime);
+    strftime(timestamp, sizeof(timestamp), "[%H:%M:%S] ", timeinfo);
+
+    wattron(app_state.win_chat, COLOR_PAIR(5) | A_DIM);
+    wprintw(app_state.win_chat, "%s", timestamp);
+    wattroff(app_state.win_chat, COLOR_PAIR(5) | A_DIM);
+
     int color = 2;
     if (strstr(fmt, "Me ->") == fmt) {
         color = 3;
