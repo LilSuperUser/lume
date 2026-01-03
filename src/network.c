@@ -186,10 +186,10 @@ void *tcp_server(void *arg) {
         socklen_t len = sizeof(client_addr);
         int client_sock = accept(sock, (struct sockaddr *)&client_addr, &len);
         if (client_sock >= 0) {
-            int *arg = malloc(sizeof(int));
-            *arg = client_sock;
+            int *client_sock_ptr = malloc(sizeof(int));
+            *client_sock_ptr = client_sock;
             pthread_t tid;
-            pthread_create(&tid, NULL, connection_handler, arg);
+            pthread_create(&tid, NULL, connection_handler, client_sock_ptr);
             pthread_detach(tid);
         }
     }

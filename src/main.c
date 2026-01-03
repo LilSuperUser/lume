@@ -5,7 +5,7 @@
 #include "../include/network.h"
 #include "../include/ui.h"
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *const argv[]) {
     if (argc != 3) {
         fprintf(stderr, "Usage: %s <username> <tcp_port>\n", "lume");
         return 1;
