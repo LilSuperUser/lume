@@ -18,3 +18,7 @@ If applicable, add screenshots to help explain your problem.
 **Environment:**
  - OS: [e.g. Ubuntu 22.04]
  - Terminal: [e.g. xterm, gnome-terminal]
+
+> [!NOTE]
+> **CONTRIBUTIONS ARE WELCOME!**
+> If you want to get this issue assigned to you. Just comment `assign this issue to me`. You will be assigned to the issue instantly via GitHub-actions bot.

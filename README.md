@@ -60,8 +60,9 @@ sudo make install
 lume <username> <port>
 ```
 
-- If you run `lume` without arguments, it will attempt to load configuration from `~/.config/lume/lume.conf`.
-- If you provide `<username>` and `<port>`, those values will be used directly.
+- **Start with arguments**: `lume <username> <port>`
+- **Start with saved config**: `lume` (loads from `~/.config/lume/lume.conf`)
+- **Configure interactively**: `lume config`
 
 </details>
 
@@ -78,7 +79,13 @@ lume <username> <port>
 <details>
 <summary><strong>Configuration File</strong></summary>
 
-If you want to use a configuration file, create `~/.config/lume/lume.conf` with the following format:
+You can easily create or update your configuration using the `config` command:
+
+```bash
+lume config
+```
+
+Alternatively, you can manually create `~/.config/lume/lume.conf` with the following format:
 
 ```ini
 username=yourname

@@ -3,6 +3,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include "../include/network.h"
 #include "../include/ui.h"
@@ -81,10 +83,71 @@ int load_config_file(char *username, int *port) {
     return found_username && found_port;
 }
 
+void save_config_file(const char *username, int port) {
+    char path[512];
+    char dir[512];
+    const char *home = getenv("HOME");
+    if (!home) {
+        fprintf(stderr, "Error: HOME environment variable not set.\n");
+        return;
+    }
+
+    snprintf(dir, sizeof(dir), "%s/.config/lume", home);
+    struct stat st = {0};
+    if (stat(dir, &st) == -1) {
+        if (mkdir(dir, 0700) == -1) {
+            perror("mkdir");
+            return;
+        }
+    }
+
+    snprintf(path, sizeof(path), "%s/.config/lume/lume.conf", home);
+    FILE *file = fopen(path, "w");
+    if (!file) {
+        perror("fopen");
+        return;
+    }
+
+    fprintf(file, "username=%s\n", username);
+    fprintf(file, "port=%d\n", port);
+    fclose(file);
+    printf("Configuration saved to %s\n", path);
+}
+
+void handle_config_command(int argc, char *argv[]) {
+    char username[USERNAME_LEN];
+    int port;
+
+    if (argc == 2) {
+        printf("Enter username: ");
+        if (fgets(username, sizeof(username), stdin) == NULL) return;
+        username[strcspn(username, "\n")] = 0;
+
+        printf("Enter port: ");
+        char port_str[10];
+        if (fgets(port_str, sizeof(port_str), stdin) == NULL) return;
+        port = atoi(port_str);
+        if (port < 1 || port > 65535) {
+            fprintf(stderr, "Invalid port. Port must be between 1 and 65535.\n");
+            return;
+        }
+    } else {
+        fprintf(stderr, "Usage: %s config\n", argv[0]);
+        return;
+    }
+
+    save_config_file(username, port);
+}
+
 // cppcheck-suppress constParameter
 int main(int argc, char *argv[]) {
     char config_username[USERNAME_LEN];
     int config_port = 0;
+
+    if (argc >= 2 && strcmp(argv[1], "config") == 0) {
+        handle_config_command(argc, argv);
+        return 0;
+    }
 
     if (argc == 3) {
         // 1️⃣ Use command-line arguments
@@ -108,7 +171,15 @@ int main(int argc, char *argv[]) {
 
     } else {
         // 3️⃣ Invalid args or no config available
-        fprintf(stderr, "Usage: %s <username> <tcp_port>\n", "lume");
+        if (argc == 1) {
+            fprintf(stderr, "Error: Configuration file not found at ~/.config/lume/lume.conf\n");
+            fprintf(stderr, "Please run '%s config' to set up your profile or provide arguments:\n", argv[0]);
+        } else {
+            fprintf(stderr, "Usage:\n");
+        }
+        fprintf(stderr, "  %s <username> <tcp_port>  (Start with specific settings)\n", argv[0]);
+        fprintf(stderr, "  %s config                 (Configure interactively)\n", argv[0]);
+        fprintf(stderr, "  %s                        (Start using saved config)\n", argv[0]);
         return 1;
     }
 
