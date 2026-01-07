@@ -8,16 +8,17 @@
 typedef struct {
     char local_username[USERNAME_LEN];
     int local_tcp_port;
-    
+    char local_ip[16];
+
     Peer peers[MAX_PEERS];
     int peer_count;
     pthread_mutex_t peer_mutex;
-    
+
     WINDOW *win_header;
     WINDOW *win_chat;
     WINDOW *win_input;
     pthread_mutex_t chat_mutex;
-    
+
     int selected_peer_index;
     int running;
 } AppState;

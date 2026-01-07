@@ -153,7 +153,7 @@ int main(int argc, char *argv[]) {
         // 1️⃣ Use command-line arguments
         strncpy(app_state.local_username, argv[1], USERNAME_LEN);
         app_state.local_username[USERNAME_LEN - 1] = '\0';
-        
+
         char *endptr;
         long val = strtol(argv[2], &endptr, 10);
         if (*argv[2] != '\0' && *endptr == '\0' && val >= 1 && val <= 65535) {
@@ -182,6 +182,10 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "  %s                        (Start using saved config)\n", argv[0]);
         return 1;
     }
+
+    // Get local IP address
+    if (!get_local_ip(app_state.local_ip, sizeof(app_state.local_ip)))
+        strncpy(app_state.local_ip, "unknown", sizeof(app_state.local_ip));
 
     init_ui();
     init_network_threads();
