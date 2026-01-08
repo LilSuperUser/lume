@@ -166,6 +166,53 @@ void log_message(const char *fmt, ...) {
     pthread_mutex_unlock(&app_state.chat_mutex);
 }
 
+void show_help() {
+    pthread_mutex_lock(&app_state.chat_mutex);
+
+    // Add spacing before help message
+    wprintw(app_state.win_chat, "\n");
+
+    // Print help header with color
+    wattron(app_state.win_chat, COLOR_PAIR(2) | A_BOLD);
+    wprintw(app_state.win_chat, "Available commands:\n");
+    wattroff(app_state.win_chat, COLOR_PAIR(2) | A_BOLD);
+
+    // Print commands with color
+    wattron(app_state.win_chat, COLOR_PAIR(3));
+    wprintw(app_state.win_chat, "  /file <path>");
+    wattroff(app_state.win_chat, COLOR_PAIR(3));
+    wprintw(app_state.win_chat, "  - Send a file to the selected peer\n");
+
+    wattron(app_state.win_chat, COLOR_PAIR(3));
+    wprintw(app_state.win_chat, "  /help");
+    wattroff(app_state.win_chat, COLOR_PAIR(3));
+    wprintw(app_state.win_chat, "         - Show this help message\n");
+
+    wprintw(app_state.win_chat, "\n");
+
+    // Print controls header with color
+    wattron(app_state.win_chat, COLOR_PAIR(2) | A_BOLD);
+    wprintw(app_state.win_chat, "Controls:\n");
+    wattroff(app_state.win_chat, COLOR_PAIR(2) | A_BOLD);
+
+    // Print controls with color
+    wattron(app_state.win_chat, COLOR_PAIR(4));
+    wprintw(app_state.win_chat, "  UP/DOWN");
+    wattroff(app_state.win_chat, COLOR_PAIR(4));
+    wprintw(app_state.win_chat, "       - Select peer\n");
+
+    wattron(app_state.win_chat, COLOR_PAIR(4));
+    wprintw(app_state.win_chat, "  ESC");
+    wattroff(app_state.win_chat, COLOR_PAIR(4));
+    wprintw(app_state.win_chat, "           - Quit\n");
+
+    // Add spacing after help message
+    wprintw(app_state.win_chat, "\n");
+
+    wrefresh(app_state.win_chat);
+    pthread_mutex_unlock(&app_state.chat_mutex);
+}
+
 void handle_input() {
     char input_buf[256];
     int input_pos = 0;
@@ -196,7 +243,9 @@ void handle_input() {
                 pthread_mutex_unlock(&app_state.peer_mutex);
             } else if (ch == '\n') {
                 if (input_pos > 0) {
-                    if (strncmp(input_buf, "/file ", 6) == 0) {
+                    if (strcmp(input_buf, "/help") == 0) {
+                        show_help();
+                    } else if (strncmp(input_buf, "/file ", 6) == 0) {
                         send_file(app_state.selected_peer_index, input_buf + 6);
                     } else {
                         send_text_message(app_state.selected_peer_index, input_buf);

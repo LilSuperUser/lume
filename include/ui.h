@@ -30,5 +30,6 @@ void cleanup_ui();
 void draw_interface();
 void log_message(const char *fmt, ...);
 void handle_input();
+void show_help();
 
 #endif
