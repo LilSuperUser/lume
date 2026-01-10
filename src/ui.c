@@ -369,10 +369,10 @@ void handle_input() {
                         file_prefix = last_slash + 1;
                     }
 
-                    size_t file_prefix_len = strlen(file_prefix);
                     DIR *dir = opendir(dir_path);
                     if (dir) {
-                        struct dirent *entry;
+                        size_t file_prefix_len = strlen(file_prefix);
+                        const struct dirent *entry;
                         char match_name[256] = {0};
                         int match_count = 0;
 
