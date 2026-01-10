@@ -26,6 +26,7 @@ void send_file_response(int sock, int accepted) {
     memset(&response, 0, sizeof(response));
     response.type = accepted ? MSG_FILE_ACCEPT : MSG_FILE_REJECT;
     strncpy(response.sender_name, app_state.local_username, USERNAME_LEN - 1);
+    response.sender_name[USERNAME_LEN - 1] = '\0';
     response.payload_len = 0;
     send_all(sock, &response, sizeof(response));
 }
@@ -366,9 +367,17 @@ void init_network_threads() {
 }
 
 void send_text_message(int peer_index, const char *msg) {
-    if (peer_index < 0 || peer_index >= app_state.peer_count) return;
+    pthread_mutex_lock(&app_state.peer_mutex);
+
+    if (peer_index < 0 || peer_index >= app_state.peer_count) {
+        pthread_mutex_unlock(&app_state.peer_mutex);
+        log_message("No peer selected or peer disconnected");
+        return;
+    }
 
     Peer peer = app_state.peers[peer_index];
+    pthread_mutex_unlock(&app_state.peer_mutex);
+
     int sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock < 0) return;
 
@@ -383,6 +392,7 @@ void send_text_message(int peer_index, const char *msg) {
         memset(&header, 0, sizeof(header));
         header.type = MSG_TEXT;
         strncpy(header.sender_name, app_state.local_username, USERNAME_LEN - 1);
+        header.sender_name[USERNAME_LEN - 1] = '\0';
         header.payload_len = strlen(msg);
         send_all(sock, &header, sizeof(header));
         send_all(sock, msg, header.payload_len);
@@ -414,7 +424,6 @@ void send_file(int peer_index, const char *filepath) {
     off_t fsize = lseek(fd, 0, SEEK_END);
     lseek(fd, 0, SEEK_SET);
 
-    Peer peer = app_state.peers[peer_index];
     int sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock < 0) {
         close(fd);
