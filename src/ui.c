@@ -106,8 +106,11 @@ void draw_interface() {
                                     app_state.peer_count);
 
         // Right align peer message to prevent overlap
-        int peer_col = (max_x-local_info_len)-2;
-        
+        int peer_col = (max_x - local_info_len) - 2;
+        if (peer_col < 2) {
+            peer_col = 2;
+        }
+
         mvwprintw(app_state.win_header, 1, peer_col, "%s", peer_message);
         wattroff(app_state.win_header, COLOR_PAIR(3));
     } else {
