@@ -4,6 +4,7 @@
 #include <stdarg.h>
 #include <ncurses.h>
 #include <unistd.h>
+#include <dirent.h>
 #include <arpa/inet.h>
 #include "../include/ui.h"
 
@@ -78,9 +79,9 @@ void draw_interface() {
 
     // Display local user info with IP address
     mvwprintw(app_state.win_header, 1, 2, "Lume - %s [%s:%d]",
-              app_state.local_username,
-              app_state.local_ip,
-              app_state.local_tcp_port);
+            app_state.local_username,
+            app_state.local_ip,
+            app_state.local_tcp_port);
 
     if (app_state.peer_count > 0) {
         if (app_state.selected_peer_index < 0) {
@@ -318,15 +319,19 @@ void handle_input() {
             if (ch == KEY_UP) {
                 pthread_mutex_lock(&app_state.peer_mutex);
                 if (app_state.peer_count > 0) {
-                    app_state.selected_peer_index = (app_state.selected_peer_index + 1) % app_state.peer_count;
+                    app_state.selected_peer_index =
+                        (app_state.selected_peer_index + 1) % app_state.peer_count;
                 }
                 pthread_mutex_unlock(&app_state.peer_mutex);
+
             } else if (ch == KEY_DOWN) {
                 pthread_mutex_lock(&app_state.peer_mutex);
                 if (app_state.peer_count > 0) {
-                    app_state.selected_peer_index = (app_state.selected_peer_index - 1 + app_state.peer_count) % app_state.peer_count;
+                    app_state.selected_peer_index =
+                        (app_state.selected_peer_index - 1 + app_state.peer_count) % app_state.peer_count;
                 }
                 pthread_mutex_unlock(&app_state.peer_mutex);
+
             } else if (ch == '\n') {
                 if (input_pos > 0) {
                     if (strcmp(input_buf, "/help") == 0) {
@@ -344,17 +349,73 @@ void handle_input() {
                     input_pos = 0;
                     werase(app_state.win_input);
                 }
+
             } else if (ch == KEY_BACKSPACE || ch == 127) {
                 if (input_pos > 0) {
                     input_buf[--input_pos] = '\0';
                 }
+
+            } else if (ch == '\t') {
+                // Autocomplete for "/file [path/to/]prefix"
+                if (strncmp(input_buf, "/file ", 6) == 0) {
+                    const char *full_path = input_buf + 6;
+                    char dir_path[256] = ".";
+                    const char *file_prefix = full_path;
+
+                    // Separate directory and prefix
+                    char *last_slash = strrchr(full_path, '/');
+                    if (last_slash) {
+                        size_t dir_len = (size_t)(last_slash - full_path);
+                        if (dir_len == 0) { // Case: /file /prefix
+                            strcpy(dir_path, "/");
+                        } else if (dir_len < sizeof(dir_path)) {
+                            strncpy(dir_path, full_path, dir_len);
+                            dir_path[dir_len] = '\0';
+                        }
+                        file_prefix = last_slash + 1;
+                    }
+
+                    DIR *dir = opendir(dir_path);
+                    if (dir) {
+                        size_t file_prefix_len = strlen(file_prefix);
+                        const struct dirent *entry;
+                        char match_name[256] = {0};
+                        int match_count = 0;
+
+                        while ((entry = readdir(dir)) != NULL) {
+                            if (strncmp(entry->d_name, file_prefix, file_prefix_len) == 0) {
+                                // Skip "." and ".." unless explicitly requested
+                                if (file_prefix_len == 0 && (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)) {
+                                    continue;
+                                }
+                                match_count++;
+                                if (match_count > 1) break;
+                                strncpy(match_name, entry->d_name, sizeof(match_name) - 1);
+                            }
+                        }
+                        closedir(dir);
+
+                        if (match_count == 1) {
+                            const char *suffix = match_name + file_prefix_len;
+                            size_t suffix_len = strlen(suffix);
+
+                            if (input_pos + suffix_len < sizeof(input_buf)) {
+                                strcpy(input_buf + input_pos, suffix);
+                                input_pos += (int)suffix_len;
+                            }
+                        }
+                    }
+                }
             } else if (input_pos < 255 && ch >= 32 && ch <= 126) {
-                input_buf[input_pos++] = ch;
+                input_buf[input_pos++] = (char)ch;
                 input_buf[input_pos] = '\0';
+
             } else if (ch == 27) {
                 app_state.running = 0;
             }
             pthread_mutex_unlock(&app_state.chat_mutex);
         }
+
+        usleep(10000);
     }
 }
