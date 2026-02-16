@@ -129,40 +129,43 @@ void *beacon_receiver(void *arg) {
     time_t last_cleanup = time(NULL);
 
     while (app_state.running) {
-        ssize_t len = recvfrom(sock, &packet, sizeof(packet), 0, (struct sockaddr *)&sender_addr, &sender_len);
-        if (len == sizeof(packet)) {
-            if (strcmp(packet.username, app_state.local_username) == 0) continue;
+        ssize_t len;
+        while ((len = recvfrom(sock, &packet, sizeof(packet), 0, (struct sockaddr *)&sender_addr, &sender_len)) > 0) {
+            sender_len = sizeof(sender_addr); // Reset for next recvfrom
+            if (len == sizeof(packet)) {
+                if (strcmp(packet.username, app_state.local_username) == 0) continue;
 
-            pthread_mutex_lock(&app_state.peer_mutex);
-            int found = 0;
-            for (int i = 0; i < app_state.peer_count; i++) {
-                if (strcmp(app_state.peers[i].username, packet.username) == 0) {
-                    app_state.peers[i].last_seen = time(NULL);
-                    app_state.peers[i].ip_addr = sender_addr.sin_addr;
-                    app_state.peers[i].tcp_port = packet.tcp_port;
-                    found = 1;
-                    break;
+                pthread_mutex_lock(&app_state.peer_mutex);
+                int found = 0;
+                for (int i = 0; i < app_state.peer_count; i++) {
+                    if (strcmp(app_state.peers[i].username, packet.username) == 0) {
+                        app_state.peers[i].last_seen = time(NULL);
+                        app_state.peers[i].ip_addr = sender_addr.sin_addr;
+                        app_state.peers[i].tcp_port = packet.tcp_port;
+                        found = 1;
+                        break;
+                    }
                 }
-            }
-            int newly_found = 0;
-            char new_peer_name[USERNAME_LEN];
-            memset(new_peer_name, 0, USERNAME_LEN);
-            if (!found && app_state.peer_count < MAX_PEERS) {
-                Peer new_peer;
-                memset(&new_peer, 0, sizeof(new_peer));
-                strncpy(new_peer.username, packet.username, USERNAME_LEN - 1);
-                new_peer.username[USERNAME_LEN - 1] = '\0';
-                new_peer.ip_addr = sender_addr.sin_addr;
-                new_peer.tcp_port = packet.tcp_port;
-                new_peer.last_seen = time(NULL);
-                app_state.peers[app_state.peer_count++] = new_peer;
-                strncpy(new_peer_name, new_peer.username, USERNAME_LEN - 1);
-                new_peer_name[USERNAME_LEN - 1] = '\0';
-                newly_found = 1;
-            }
-            pthread_mutex_unlock(&app_state.peer_mutex);
-            if (newly_found) {
-                log_message("New peer discovered: %s", new_peer_name);
+                int newly_found = 0;
+                char new_peer_name[USERNAME_LEN];
+                memset(new_peer_name, 0, USERNAME_LEN);
+                if (!found && app_state.peer_count < MAX_PEERS) {
+                    Peer new_peer;
+                    memset(&new_peer, 0, sizeof(new_peer));
+                    strncpy(new_peer.username, packet.username, USERNAME_LEN - 1);
+                    new_peer.username[USERNAME_LEN - 1] = '\0';
+                    new_peer.ip_addr = sender_addr.sin_addr;
+                    new_peer.tcp_port = packet.tcp_port;
+                    new_peer.last_seen = time(NULL);
+                    app_state.peers[app_state.peer_count++] = new_peer;
+                    strncpy(new_peer_name, new_peer.username, USERNAME_LEN - 1);
+                    new_peer_name[USERNAME_LEN - 1] = '\0';
+                    newly_found = 1;
+                }
+                pthread_mutex_unlock(&app_state.peer_mutex);
+                if (newly_found) {
+                    log_message("New peer discovered: %s", new_peer_name);
+                }
             }
         }
 
